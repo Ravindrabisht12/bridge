@@ -1,0 +1,54 @@
+name: bridge
+services:
+  db:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_DB: bridge
+      POSTGRES_USER: bridge
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - database:/var/lib/postgresql/data
+      - ./infrastructure/supabase/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U bridge -d bridge]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgres://bridge:${POSTGRES_PASSWORD}@db:5432/bridge
+      CDN_BASE: http://localhost:8788
+    ports: ["127.0.0.1:8787:8787"]
+    depends_on:
+      db: {condition: service_healthy}
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://localhost:8787/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+  assets:
+    image: nginx:stable-alpine
+    ports: ["127.0.0.1:8788:80"]
+    volumes:
+      - ./infrastructure/docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - assets:/usr/share/nginx/html:ro
+  # Run explicitly: docker compose run --rm worker
+  worker:
+    build: .
+    profiles: [sync]
+    command: [node, workers/catalogue-sync/dist/main.mjs]
+    environment:
+      DATABASE_URL: postgres://bridge:${POSTGRES_PASSWORD}@db:5432/bridge
+      STORAGE_DIR: /app/assets
+      CDN_BASE: http://localhost:8788
+    depends_on:
+      db: {condition: service_healthy}
+    volumes: [assets:/app/assets]
+    security_opt: [no-new-privileges:true]
+volumes:
+  database:
+  assets:

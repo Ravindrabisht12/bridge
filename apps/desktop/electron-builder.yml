@@ -1,0 +1,42 @@
+appId: dev.bridge.app
+productName: Bridge
+copyright: Copyright © 2026 Ravindra Bisht
+description: The center of your AI stack.
+directories:
+  buildResources: resources
+  output: release
+files:
+  - out/**/*
+  - resources/icon.png
+  - package.json
+  - '!**/*.map'
+# better-sqlite3 is a native module and the proxy child process loads it from
+# disk, so it must live outside the asar archive.
+asarUnpack:
+  # The proxy is launched by the AI client as a plain Node script, so it, the
+  # chunks it shares with the main bundle, and its native dependency must all
+  # be real files on disk rather than asar entries.
+  - 'out/main/**'
+  - '**/node_modules/better-sqlite3/**'
+mac:
+  icon: resources/icon.icns
+  category: public.app-category.developer-tools
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: resources/entitlements.mac.plist
+  entitlementsInherit: resources/entitlements.mac.plist
+win:
+  icon: resources/icon.png
+  target:
+    - target: nsis
+      arch: [x64, arm64]
+linux:
+  icon: resources/icon.png
+  target: [AppImage, deb]
+  category: Development
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true

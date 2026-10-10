@@ -1,0 +1,17 @@
+{
+  "name": "@bridge/api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Bridge catalogue API. Read-only, no auth, aggressively cacheable.",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "esbuild src/server.ts --bundle --platform=node --target=node22 --format=esm --packages=external --outfile=dist/server.mjs",
+    "start": "node dist/server.mjs"
+  },
+  "dependencies": {
+    "@bridge/types": "*",
+    "fastify": "^5.1.0",
+    "postgres": "^3.4.5"
+  }
+}

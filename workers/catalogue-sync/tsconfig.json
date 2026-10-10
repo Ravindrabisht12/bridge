@@ -1,0 +1,40 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": [
+      "ES2022"
+    ],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "types": [
+      "node"
+    ],
+    "paths": {
+      "@bridge/types": [
+        "../../packages/types/src/index.ts"
+      ],
+      "@bridge/registry": [
+        "../../packages/registry/src/index.ts"
+      ],
+      "@bridge/catalogue-data": [
+        "../../packages/catalogue-data/src/index.ts"
+      ],
+      "@bridge/pgtest": [
+        "../../packages/pgtest/src/index.ts"
+      ],
+      "@bridge/favicon": [
+        "../../packages/favicon/src/index.ts"
+      ]
+    },
+    "baseUrl": "."
+  },
+  "include": [
+    "src/**/*.ts"
+  ]
+}

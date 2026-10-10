@@ -1,0 +1,65 @@
+# The weekly job.
+#
+# Deliberately not a running server: it works for minutes once a week and needs
+# no availability. Actions gives it a schedule, secrets, logs and a manual
+# re-run button for free, and it is versioned alongside the code it runs.
+name: catalogue-sync
+
+on:
+  schedule:
+    # Mondays, 03:00 UTC. Early enough that a failure is noticed on Monday
+    # morning rather than discovered on Friday.
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run every stage but refuse to publish'
+        type: boolean
+        default: false
+
+# The job publishes to a database and a CDN through its own secrets; it needs
+# nothing from the repository beyond reading it.
+permissions:
+  contents: read
+
+concurrency:
+  # Two syncs writing the same tables would interleave upserts and produce a
+  # snapshot that matches neither run.
+  group: catalogue-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    # Opt-in: a fork or a fresh clone has none of the secrets, so the weekly
+    # schedule would only fail. Set the repository variable to turn it on.
+    if: ${{ vars.CATALOGUE_SYNC_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    # The registry pull is ~27,000 rows over hundreds of pages; the icon stage
+    # talks to dozens of vendor hosts. Generous, but bounded.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # The guard is the reason this job is safe to run unattended. If its
+      # tests are broken, the run must not proceed.
+      - name: Verify the publish guard
+        run: npx vitest run --config workers/catalogue-sync/vitest.config.ts
+
+      - name: Sync
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          CDN_BUCKET: ${{ secrets.CDN_BUCKET }}
+          CDN_TOKEN: ${{ secrets.CDN_TOKEN }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: npm run sync --workspace @bridge/catalogue-sync
+
+      - name: Report
+        if: always()
+        run: echo "See the sync_runs table for the per-stage record of this run."

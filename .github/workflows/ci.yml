@@ -1,0 +1,25 @@
+name: ci
+
+on:
+  push: { branches: [main] }
+  pull_request:
+
+# Read-only token: CI checks code, it never writes to the repository.
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: macos-latest   # the desktop app's icon tooling and dmg target need macOS
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run typecheck:all
+      - run: npm run lint
+      - run: npm run test:all
+      - run: npm run build
+      - run: npm run build:api
+      - run: npm run test:e2e

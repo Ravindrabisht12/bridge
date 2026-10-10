@@ -1,0 +1,10 @@
+{
+  "name": "@bridge/favicon",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ranked favicon discovery. Shared by the desktop app and the catalogue worker.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": { ".": "./src/index.ts" }
+}

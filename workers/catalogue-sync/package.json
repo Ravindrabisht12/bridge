@@ -1,0 +1,17 @@
+{
+  "name": "@bridge/catalogue-sync",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Weekly job: pull the MCP registry, resolve icons, verify vendors, publish a snapshot.",
+  "type": "module",
+  "scripts": {
+    "sync": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@bridge/catalogue-data": "*",
+    "@bridge/favicon": "*",
+    "@bridge/registry": "*",
+    "@bridge/types": "*",
+    "postgres": "^3.4.5"
+  }
+}

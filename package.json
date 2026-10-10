@@ -1,0 +1,53 @@
+{
+  "name": "bridge",
+  "version": "0.1.0",
+  "description": "The center of your AI stack.",
+  "author": "Ravindra Bisht",
+  "license": "MIT",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "workers/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @bridge/desktop",
+    "build": "npm run build --workspace @bridge/desktop",
+    "test": "npm run test --workspace @bridge/desktop",
+    "test:e2e": "npm run test:e2e --workspace @bridge/desktop",
+    "icons": "npm run icons --workspace @bridge/desktop",
+    "dist": "npm run dist --workspace @bridge/desktop",
+    "dist:mac": "npm run dist:mac --workspace @bridge/desktop",
+    "dev:api": "tsx watch apps/api/src/server.ts",
+    "build:api": "esbuild apps/api/src/server.ts --bundle --platform=node --target=node22 --format=esm --packages=external --outfile=apps/api/dist/server.mjs",
+    "start:api": "node apps/api/dist/server.mjs",
+    "sync": "npm run sync --workspace @bridge/catalogue-sync",
+    "typecheck:all": "tsc --noEmit -p apps/desktop/tsconfig.node.json && tsc --noEmit -p apps/desktop/tsconfig.web.json && tsc --noEmit -p packages/types && tsc --noEmit -p packages/registry && tsc --noEmit -p packages/catalogue-data && tsc --noEmit -p packages/favicon && tsc --noEmit -p packages/pgtest && tsc --noEmit -p apps/api && tsc --noEmit -p workers/catalogue-sync",
+    "lint": "eslint . --ext .ts,.tsx",
+    "test:desktop": "vitest run --config apps/desktop/vitest.config.ts",
+    "test:registry": "vitest run --config packages/registry/vitest.config.ts",
+    "test:api": "vitest run --config apps/api/vitest.config.ts",
+    "test:worker": "vitest run --config workers/catalogue-sync/vitest.config.ts",
+    "test:all": "npm run test:desktop && npm run test:registry && npm run test:favicon && npm run test:api && npm run test:worker",
+    "db:apply": "psql \"$DATABASE_URL\" -f infrastructure/supabase/migrations/0001_catalogue.sql",
+    "build:worker": "esbuild workers/catalogue-sync/src/main.ts --bundle --platform=node --target=node22 --format=esm --external:postgres --outfile=workers/catalogue-sync/dist/main.mjs",
+    "test:favicon": "vitest run --config packages/favicon/vitest.config.ts",
+    "icons:catalogue": "electron packages/catalogue-data/scripts/build-icons.cjs",
+    "preflight": "node scripts/preflight.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@electric-sql/pglite-socket": "^0.2.11",
+    "@types/node": "^22.9.0",
+    "@typescript-eslint/eslint-plugin": "^8.14.0",
+    "@typescript-eslint/parser": "^8.14.0",
+    "eslint": "^8.57.1",
+    "tsx": "^4.23.13",
+    "typescript": "^5.6.3",
+    "vitest": "^4.1.11",
+    "yaml": "^2.6.1"
+  },
+  "engines": {
+    "node": ">=22.14.0"
+  }
+}

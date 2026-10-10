@@ -1,0 +1,10 @@
+{
+  "name": "@bridge/registry",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MCP registry client and the pure transforms over its responses. Shared by the desktop app and the catalogue worker.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": { ".": "./src/index.ts" }
+}

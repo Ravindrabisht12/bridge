@@ -1,0 +1,26 @@
+node_modules/
+.tsbuild/
+
+# Secrets. compose.yaml requires POSTGRES_PASSWORD here and .env.example asks
+# for a Supabase service-role token, which bypasses RLS entirely — this file
+# must never be committable.
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+
+# build output
+apps/*/dist/
+workers/*/dist/
+apps/desktop/out/
+apps/desktop/release/
+
+# Local data that must never be committed: Bridge's own database and backups
+# hold server credentials and recorded tool calls.
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.bak
+coverage/

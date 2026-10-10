@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Bridge, at 128px and up: a suspension bridge side-on, white on one flat blue.
+    Artwork is 824x824 on a 1024x1024 canvas — the macOS icon grid. The
+    system adds no padding of its own, so an icon drawn edge-to-edge renders
+    about 20% larger than everything else in the Dock. Measured against the
+    Electron apps already installed here, this now fills 80.9% against their
+    82.8% (their extra weight at the bottom is a drop shadow).
+    Geometry is authored in a 512 square and scaled onto the body. -->
+  <g transform="translate(100 100) scale(1.609375)">
+    <rect width="512" height="512" rx="115.20" fill="#2440C8"/>
+    <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+      <g stroke-width="28">
+        
+        <path d="M 164 150 Q 256 426 348 150"/>
+        <path d="M 40 318 C 98 312 150 250 164 150"/>
+        <path d="M 472 318 C 414 312 362 250 348 150"/>
+      </g>
+      <g stroke-width="34">
+        <path d="M 164 130 L 164 392"/>
+        <path d="M 348 130 L 348 392"/>
+      </g>
+      <path d="M 40 318 L 472 318" stroke-width="34"/>
+    </g>
+  </g>
+</svg>

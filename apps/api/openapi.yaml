@@ -1,0 +1,299 @@
+openapi: 3.1.0
+info:
+  title: Bridge Catalogue API
+  version: 0.1.0
+  description: |
+    Read-only catalogue of MCP servers.
+
+    **This API never receives user data.** There is no endpoint that accepts a
+    trace, a policy, a token, or a list of what anyone installed, and requests
+    carry no identity. Adding one is a deliberate decision, not a patch — see
+    `SERVICE-ARCHITECTURE.md` §0.
+
+    Every response is identical for every caller, so all of it is cacheable and
+    a CDN in front of the origin serves the great majority of traffic.
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://api.bridge.app
+    description: production
+  - url: http://localhost:8787
+    description: local
+
+tags:
+  - name: catalogue
+  - name: app
+  - name: ops
+
+paths:
+  /health:
+    get:
+      tags: [ops]
+      summary: Liveness
+      description: 503 when the backing store is unreachable; the API itself being up is not the question.
+      responses:
+        '200':
+          description: healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties: { ok: { type: boolean, const: true } }
+        '503':
+          description: dependency unreachable
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties: { ok: { type: boolean, const: false } }
+
+  /v1/search:
+    get:
+      tags: [catalogue]
+      summary: Search the catalogue
+      description: |
+        Ranked. An exact name match outranks relevance, which outranks a
+        description match — someone typing "notion" wants Notion, not the forty
+        servers whose description mentions it.
+
+        This endpoint is why the API exists at all: search cannot be a static
+        file, and shipping 27,000 rows to every client to answer it locally is
+        the thing this replaces.
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string, minLength: 2 }, description: At least two characters. }
+        - { name: firstParty, in: query, schema: { type: boolean, default: false }, description: Restrict to the vendor-verified set. }
+        - { name: category, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, default: 25, maximum: 100 }, description: Clamped, never rejected. }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: a page of matches
+          headers:
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EntryPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+
+  /v1/featured:
+    get:
+      tags: [catalogue]
+      summary: The curated set, ordered for the front page
+      description: |
+        The vendor-verified entries, by editorial rank. Small enough that the
+        desktop app ships a copy compiled in, so a fresh install has a useful
+        library before it has a network.
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 60, maximum: 200 } }
+      responses:
+        '200':
+          description: the curated set
+          headers:
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EntryPage' }
+
+  /v1/catalogue:
+    get:
+      tags: [catalogue]
+      summary: Everything changed since a cursor
+      description: |
+        The delta feed. Omit `since` for a first sync.
+
+        `removed` is an explicit list, never an absence: an entry missing from a
+        page must not be read as deleted, because that is how a truncated
+        response empties a user's catalogue. Removals are only returned on the
+        final page, so a client that stops paging early never records a cursor
+        past a removal it has not applied.
+
+        Applying a delta twice is harmless, so a failed merge can simply retry.
+      parameters:
+        - { name: since, in: query, schema: { type: string }, description: An opaque cursor from a previous response. A malformed one is a 400, not a full resync. }
+        - { name: limit, in: query, schema: { type: integer, default: 250, maximum: 500 } }
+      responses:
+        '200':
+          description: a page of changes
+          headers:
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Delta' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+
+  /v1/catalogue/{key}:
+    get:
+      tags: [catalogue]
+      summary: One entry
+      parameters:
+        - { name: key, in: path, required: true, schema: { type: string }, description: 'Reverse-DNS registry name, e.g. io.github.owner/server.' }
+      responses:
+        '200':
+          description: the entry
+          headers:
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CatalogueEntry' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v1/snapshot/latest:
+    get:
+      tags: [catalogue]
+      summary: Where the current bulk snapshot lives
+      description: |
+        Metadata only. The bytes are a static file on the CDN and this hands
+        over the URL rather than proxying megabytes through the origin. A client
+        that already holds `digest` has nothing to download.
+      responses:
+        '200':
+          description: snapshot metadata
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SnapshotMeta' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v1/app/latest:
+    get:
+      tags: [app]
+      summary: The current desktop release
+      description: |
+        What the app shows a human — version, notes, downloads. Distinct from
+        electron-updater's own `latest-mac.yml`, which is a static file the
+        updater reads without asking anyone.
+      responses:
+        '200':
+          description: the release
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AppRelease' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+components:
+  parameters:
+    Cursor:
+      name: cursor
+      in: query
+      schema: { type: string }
+      description: Opaque. Pass back verbatim; the encoding is not part of the contract and will change.
+
+  headers:
+    CacheControl:
+      schema: { type: string }
+      description: Every response is identical for every caller, so it is cacheable by a shared cache.
+
+  responses:
+    BadRequest:
+      description: the request was malformed
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    NotFound:
+      description: no such thing
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+
+  schemas:
+    ApiError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, enum: [bad_request, not_found, rate_limited, internal] }
+            message: { type: string }
+            retryAfter: { type: integer, description: Seconds. Present on 429 only. }
+
+    CatalogueEntry:
+      type: object
+      required:
+        [key, namespace, title, description, version, repositoryUrl, websiteUrl, status,
+         packages, remotes, isFirstParty, vendorDomain, iconUrl, category, pricingTier,
+         evidence, featuredRank, downloads, downloadsSource, publishedAt, updatedAt, verifiedAt]
+      properties:
+        key: { type: string }
+        namespace: { type: [string, 'null'] }
+        title: { type: string }
+        description: { type: string }
+        version: { type: [string, 'null'] }
+        repositoryUrl: { type: [string, 'null'] }
+        websiteUrl: { type: [string, 'null'] }
+        status: { type: string }
+        packages: { type: array, items: { type: object, additionalProperties: true } }
+        remotes: { type: array, items: { type: object, additionalProperties: true } }
+        isFirstParty:
+          type: boolean
+          description: True only when a probe confirmed the endpoint on vendorDomain. Never rendered as a seal otherwise.
+        vendorDomain: { type: [string, 'null'] }
+        iconUrl:
+          type: [string, 'null']
+          description: A URL on our own CDN wherever we hold the bytes, so browsing the library beacons no vendor.
+        category: { type: [string, 'null'] }
+        pricingTier: { type: string, enum: [free, freemium, paid, unknown] }
+        evidence:
+          type: string
+          enum: [mcp-oauth, mcp-open, manual, unverified]
+          description: mcp-oauth and mcp-open both mean a probe reached the vendor's own domain; an OAuth wall proves the endpoint is real.
+        featuredRank: { type: [integer, 'null'] }
+        downloads: { type: [integer, 'null'] }
+        downloadsSource: { type: [string, 'null'], enum: [npm, pypi, null] }
+        publishedAt: { type: [string, 'null'], format: date-time }
+        updatedAt: { type: string, format: date-time, description: Ours, not the registry's — a curation edit alone must reach clients. }
+        verifiedAt: { type: [string, 'null'], format: date-time }
+
+    EntryPage:
+      type: object
+      required: [items, nextCursor, total]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/CatalogueEntry' } }
+        nextCursor: { type: [string, 'null'] }
+        total: { type: [integer, 'null'], description: Null when counting would cost more than the query. }
+
+    Delta:
+      type: object
+      required: [cursor, hasMore, changed, removed]
+      properties:
+        cursor: { type: string }
+        hasMore: { type: boolean }
+        changed: { type: array, items: { $ref: '#/components/schemas/CatalogueEntry' } }
+        removed:
+          type: array
+          items: { type: string }
+          description: Explicit keys. Empty while hasMore is true.
+
+    SnapshotMeta:
+      type: object
+      required: [digest, url, bytes, entryCount, cursor, generatedAt]
+      properties:
+        digest: { type: string, description: Content addressed, so a client can tell it already has this one. }
+        url: { type: string }
+        bytes: { type: integer }
+        entryCount: { type: integer }
+        cursor: { type: string, description: The cursor to use for the first delta after this snapshot. }
+        generatedAt: { type: string, format: date-time }
+
+    AppRelease:
+      type: object
+      required: [version, notes, notesUrl, publishedAt, minimumSupported, downloads]
+      properties:
+        version: { type: string }
+        notes: { type: [string, 'null'] }
+        notesUrl: { type: [string, 'null'] }
+        publishedAt: { type: string, format: date-time }
+        minimumSupported: { type: string, description: Below this the client should refuse to run rather than misbehave. }
+        downloads:
+          type: array
+          items:
+            type: object
+            required: [platform, url, bytes, sha512]
+            properties:
+              platform: { type: string, enum: [mac-arm64, mac-x64, win-x64, linux-x64] }
+              url: { type: string }
+              bytes: { type: integer }
+              sha512: { type: string }

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Bridge, at 64px and below: drawn for the size rather than scaled down.
+    Once the artwork is inset to the macOS grid there is not enough room for
+    the side cables and the deck ends to stay apart, so this keeps the parts
+    that survive — two towers, the sag between them, the deck — and thickens
+    every stroke so none of them fall below a pixel. -->
+  <g transform="translate(100 100) scale(1.609375)">
+    <rect width="512" height="512" rx="115.20" fill="#2440C8"/>
+    <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+      <g stroke-width="38">
+        
+        <path d="M 170 158 Q 256 406 342 158"/>
+      </g>
+      <g stroke-width="46">
+        <path d="M 170 136 L 170 394"/>
+        <path d="M 342 136 L 342 394"/>
+      </g>
+      <path d="M 54 310 L 458 310" stroke-width="46"/>
+    </g>
+  </g>
+</svg>
